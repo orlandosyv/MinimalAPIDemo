@@ -1,3 +1,7 @@
+using MagicVilla_CouponAPI.Data;
+using MagicVilla_CouponAPI.Models;
+using Microsoft.AspNetCore.Mvc;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -14,13 +18,44 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.MapGet("/helloworld/{id:int}", (int id) => 
+app.MapGet("/api/coupon", () => {
+    return Results.Ok(CuponStore.couponList);
+}).WithName("GetCoupons")
+    .Produces<IEnumerable<Coupon>>(200);
+
+app.MapGet("/api/coupon/{id:int}", (int id) => {
+    return Results.Ok(CuponStore.couponList.FirstOrDefault(x=>x.Id == id));
+}).WithName("GetCoupon")
+    .Produces<Coupon>(200); 
+
+app.MapPost("/api/coupon", ([FromBody] Coupon coupon) =>
 {
-    return Results.Ok("ID!" + id);
+    if (coupon.Id != 0 || string.IsNullOrEmpty(coupon.Name)) 
+    { 
+        return Results.BadRequest("Invalid Id or Coupon Name"); 
+    }
+    if (CuponStore.couponList
+        .FirstOrDefault(u=>u.Name.ToLower() == coupon.Name.ToLower()) != null )
+    {
+        return Results.BadRequest("Coupon Name already exists");
+    }
+    coupon.Id = CuponStore.couponList
+        .OrderByDescending(x => x.Id).FirstOrDefault().Id + 1;
+    
+    CuponStore.couponList.Add(coupon);
+    return Results.CreatedAtRoute("GetCoupon",new { id = coupon.Id},coupon);
+}).WithName("CreateCoupon")
+    .Accepts<Coupon>("application/json")
+    .Produces<Coupon>(201)
+    .Produces(400);
+
+app.MapPut("/api/coupon", () =>
+{
+
 });
 
-app.MapPost("/helloWorld2", () => Results.Ok("Hallo Welt 2"));
-
-app.UseHttpsRedirection();
+app.MapDelete("/api/coupon/{id:int}", (int id) => {
+    return "";
+});
 
 app.Run();
