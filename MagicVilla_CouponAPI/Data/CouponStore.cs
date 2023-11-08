@@ -2,7 +2,7 @@
 
 namespace MagicVilla_CouponAPI.Data
 {
-    public class CuponStore
+    public class CouponStore
     {
         public static List<Coupon> couponList = new List<Coupon>
         {
