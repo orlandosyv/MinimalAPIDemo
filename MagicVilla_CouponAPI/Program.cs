@@ -4,6 +4,7 @@ using MagicVilla_CouponAPI;
 using MagicVilla_CouponAPI.Data;
 using MagicVilla_CouponAPI.Models;
 using MagicVilla_CouponAPI.Models.DTO;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
 
@@ -88,13 +89,47 @@ app.MapPost("/api/coupon",
     .Produces<APIResponse>(201)
     .Produces(400);
 
-app.MapPut("/api/coupon", () =>
-{
+app.MapPut("/api/coupon",
+    async (
+        IMapper _mapper,
+        IValidator<CouponUpdateDTO> _validation,
+        [FromBody] CouponUpdateDTO coupon_U_DTO
+    ) =>
+    {
+        APIResponse response = new() { IsSuccess = false, StatusCode = HttpStatusCode.BadRequest };
+        var validationResult = await _validation.ValidateAsync(coupon_U_DTO);
+        if (!validationResult.IsValid)  //string.IsNullOrEmpty(coupon_U_DTO.Name)
+        {
+            response.ErrorMessages.Add(validationResult.Errors.FirstOrDefault().ToString());
+            return Results.BadRequest(response);
+        }        
 
-});
+        Coupon couponFromStore = CouponStore.couponList.FirstOrDefault(u=>u.Id == coupon_U_DTO.Id);
+        couponFromStore.IsActive = coupon_U_DTO.IsActive;
+        couponFromStore.Name = coupon_U_DTO.Name;
+        couponFromStore.Percent = coupon_U_DTO.Percent;
+        couponFromStore.LastUpdated = DateTime.Now;
 
-app.MapDelete("/api/coupon/{id:int}", (int id) => {
-    return "";
+        response.Result = _mapper.Map<CouponDTO>(couponFromStore);
+        response.IsSuccess = true;
+        response.StatusCode = HttpStatusCode.OK;
+        return Results.Ok(response);
+    }) 
+    .WithName("UpateCoupon")
+    .Accepts<CouponUpdateDTO>("application/json")
+    .Produces<APIResponse>(200)
+    .Produces(400);
+
+app.MapDelete("/api/coupon/{id:int}", (int id) => {    
+    //APIResponse response = new();
+    //response.Result = CouponStore.couponList.FirstOrDefault(u => u.Id == id);
+    //response.IsSuccess = false;
+    //response.StatusCode = HttpStatusCode.BadRequest;
+    if (id==0) { return Results.BadRequest(); }
+    var coupon = CouponStore.couponList.FirstOrDefault(u => u.Id == id);
+    if (coupon == null) { return Results.NotFound(); }
+    CouponStore.couponList.Remove(coupon);
+    return Results.NoContent();
 });
 
 app.Run();
